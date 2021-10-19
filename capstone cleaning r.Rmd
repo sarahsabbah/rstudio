@@ -1,0 +1,442 @@
+---
+title: "Google Capstone"
+author: "Sarah Sabbah"
+date: "14/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+1. Document Description
+This document shows steps taken to upload, clean and transform Cyclists datasets to prepare for analysis.
+
+##First installing and loading the packages required to read, and clean data
+```{r}
+install.packages("tidyverse")
+install.packages("janitor")
+
+library(tidyverse)
+library(janitor)
+
+```
+
+##then import 12 months data files from https://divvy-tripdata.s3.amazonaws.com/index.html
+##while renaming each file into something more simple
+
+```{r}
+df1<-read.csv("202004-divvy-tripdata.csv")
+df2<-read.csv("202005-divvy-tripdata.csv")
+df3<-read.csv("202006-divvy-tripdata.csv")
+df4<-read.csv("202007-divvy-tripdata.csv")
+df5<-read.csv("202008-divvy-tripdata.csv")
+df6<-read.csv("202009-divvy-tripdata.csv")
+df7<-read.csv("202010-divvy-tripdata.csv")
+df8<-read.csv("202011-divvy-tripdata.csv")
+df9<-read.csv("202012-divvy-tripdata.csv")
+df10<-read.csv("202101-divvy-tripdata.csv")
+df11<-read.csv("202102-divvy-tripdata.csv")
+df12<-read.csv("202103-divvy-tripdata.csv")
+```
+
+#now that we have all 12 data files imported, we want to combine them all into one dataframe using rbind, which stands for row bind
+```{r}
+bike_rides<-rbind(df1,df2,df3,df4,df5,df6,df7,df8,df9,df10,df11,df12)
+```
+
+#now we do data cleaning by removing nulls in rows and columns
+```{r}
+bike_rides<-janitor::remove_empty(bike_rides,which=c("cols"))
+bike_rides<-janitor::remove_empty(bike_rides,which=c("rows"))
+```
+
+##this shows the exact same number of columns and rows so therefore we didn't have duplicates to begin with
+#we also do not want and na values
+```{r}
+bike_rides<-na.omit(bike_rides)
+```
+
+#okay so this did remove some rows, we went down from 3489748 rows to 3354514 rows
+#now we ensure that data types are correct, we want to change chr to a date time format
+```{r}
+bike_rides$started_at<-as.POSIXct(bike_rides$started_at,"%Y-%m-%d %H:%M:%S")
+bike_rides$ended_at<-as.POSIXct(bike_rides$ended_at,"%Y-%m-%d %H:%M:%S")
+```
+#we also want to make a new column with ride lenght and ensure that ride duration is entered as numeric
+#load dplyr so %>% works
+
+```{r}
+install.packages("dplyr")
+library(dplyr)
+```
+
+```{r}
+bike_rides<-bike_rides %>%
+  mutate(ride_length=as.numeric(bike_rides$ended_at-bike_rides$started_at)/60)
+```
+
+#works!you can check now that your table has 14 variables(columns)
+
+#now lets looks at the average of ride times
+```{r}
+summary(bike_rides$ride_length)
+```
+
+#this gives you nonsensical numbers, but looks like the average(mean)is ride is 24.55
+
+#lets make sure no ride times under 0 are entered
+
+```{r}
+bike_rides<-bike_rides %>%
+  filter(!(ride_length <0))
+```
+#this has eliminated rows, we now have 3351199 obs
+#lets get an average again
+```{r}
+summary(bike_rides$ride_length)
+
+```
+#so this changes our average to 27.79
+#now we want to create a column for year, month and day of the week, date and time of day
+```{r}
+bike_rides$year<-format(
+  bike_rides$started_at,
+  "%Y"
+)
+```
+```{r}
+bike_rides$month<-format(
+  bike_rides$started_at,
+  "%m"
+)
+```
+```{r}
+bike_rides$weekday<-format(
+  bike_rides$started_at,
+  "%A"
+)
+```
+```{r}
+bike_rides$YMD<-format(
+  bike_rides$started_at,
+  "%Y-%m-%d"
+)
+```
+```{r}
+bike_rides$ToD<-format(
+  bike_rides$started_at,
+  "%H:%M:%S"
+)
+```
+to continue cleaning, we want to make sure there isn't any duplicates
+```{r}
+ride_id_check<-bike_rides%>%
+  count(ride_id)%>%
+  filter(n > 1)
+```
+#this takes a couple of minutes, but no duplicates are found
+#at this point, this dataset is cleaned, so save the dataframe, this also takes a few minutes (we have 19 columns and 3351199 rows)
+```{r}
+bike_rides%>%
+  write.csv("bike_rides_cleaned.csv")
+```
+#now i want to understand what and how many types of bikes there is 
+```{r}
+unique(bike_rides$rideable_type)
+```
+
+#this returns 3 options:docked, electric and classic
+#i want to see how many stations there are
+```{r}
+station_name_check<-bike_rides %>%
+  group_by(start_station_name) %>%
+  count(start_station_name)
+```
+#wow, there is 706 stations
+
+#now i want to know what stations where used at each month, so my data starts in april of 2020 to march of 2021
+```{r}
+April_2020_filter<-bike_rides %>%
+  filter(
+    month =="04"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+# great so i'm going to do this for all months
+```{r}
+May_2020_filter<-bike_rides%>%
+  filter(
+    month =="05"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+June_2020_filter<-bike_rides%>%
+  filter(
+    month =="06"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+July_2020_filter<-bike_rides%>%
+  filter(
+    month =="07"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+August_2020_filter<-bike_rides%>%
+  filter(
+    month =="08"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+September_2020_filter<-bike_rides%>%
+  filter(
+    month =="09"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+October_2020_filter<-bike_rides%>%
+  filter(
+    month =="10"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+November_2020_filter<-bike_rides%>%
+  filter(
+    month =="11"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+December_2020_filter<-bike_rides%>%
+  filter(
+    month =="12"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+January_2021_filter<-bike_rides%>%
+  filter(
+    month =="01"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+
+```{r}
+February_2021_filter<-bike_rides%>%
+  filter(
+    month =="02"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+
+```{r}
+March_2021_filter<-bike_rides%>%
+  filter(
+    month =="03"
+  ) %>%
+  group_by(
+    start_station_name
+  ) %>%
+  count(start_station_name)
+```
+#okay so now I've made dataframes with each month and also how many times the station was used
+#now we want to check if a type of bike was added in a specific month, knowing this will give context to trends
+```{r}
+rideable_type<-bike_rides %>% 
+  group_by(
+    month,
+    year
+  ) %>% 
+  select(
+  rideable_type,
+  month,
+  year
+) %>% 
+count(
+  rideable_type
+)
+```
+```{r}
+library(dplyr)
+```
+#this gives us a dataframe to view the bikes rides used most in what month as well as when a new type was introduced.
+
+```{r}
+rideable_type %>% 
+  group_by(rideable_type) %>% 
+  filter(year==min(year)) %>% 
+  filter(month==min(month))
+```
+#this shows that classic bikes where added in December of 2020, and electric bikes added in July 2020, prior to that, the only option for riders were docked bikes
+
+#now we want to assess how many times each stations was used in each month
+
+```{r}
+station_name_check$April_2020<-as.integer(station_name_check$start_station_name
+                                          %in% April_2020_filter$start_station_name)
+
+station_name_check$May_2020<-as.integer(station_name_check$start_station_name
+                                          %in% May_2020_filter$start_station_name)
+
+station_name_check$June_2020<-as.integer(station_name_check$start_station_name
+                                          %in% June_2020_filter$start_station_name)
+
+station_name_check$July_2020<-as.integer(station_name_check$start_station_name
+                                          %in% July_2020_filter$start_station_name)
+
+station_name_check$August_2020<-as.integer(station_name_check$start_station_name
+                                          %in% August_2020_filter$start_station_name)
+
+station_name_check$September_2020<-as.integer(station_name_check$start_station_name
+                                          %in% September_2020_filter$start_station_name)
+
+station_name_check$October_2020<-as.integer(station_name_check$start_station_name
+                                          %in% October_2020_filter$start_station_name)
+
+station_name_check$November_2020<-as.integer(station_name_check$start_station_name
+                                          %in% November_2020_filter$start_station_name)
+
+station_name_check$December_2020<-as.integer(station_name_check$start_station_name
+                                          %in% December_2020_filter$start_station_name)
+
+station_name_check$January_2021<-as.integer(station_name_check$start_station_name
+                                          %in% January_2021_filter$start_station_name)
+
+station_name_check$February_2021<-as.integer(station_name_check$start_station_name
+                                          %in% February_2021_filter$start_station_name)
+
+station_name_check$March_2021<-as.integer(station_name_check$start_station_name
+                                          %in% March_2021_filter$start_station_name)
+
+```
+
+add total/sum column
+
+```{r}
+station_name_check$count<-rowSums(station_name_check[,3:14])
+
+```
+
+#data is now cleaned and ready for analysis
+
+a few questions we will answer are: 
+what are the most popular stations
+most popular times of the year
+most popular day of the week
+most popular time of day
+bike type preferences
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+bike_rides %>% 
+  group_by(member_casual,weekday) %>% 
+  summarise(average_duration=mean(ride_length)) %>% 
+  arrange(member_casual,weekday) %>% 
+  ggplot(aes(x=weekday,y=average_duration,
+              fill=member_casual))+
+  geom_col(position = "dodge")+
+  scale_y_continuous(labels=function(x)format(x, scientific=FALSE))+
+  labs(title="Average Ride Duration(Minutes) by User Type")+
+  ylab("Average Duration in Minutes")+
+  xlab("Day of Week")
+#ride duration
+
+```
+```{r}
+bike_rides %>% 
+  group_by(member_casual,weekday) %>% 
+  summarise(number_of_rides=n()) %>% 
+  arrange(member_casual,weekday) %>% 
+  ggplot(aes(x=weekday,y=number_of_rides,
+             fill=member_casual))+
+  geom_col(position = "dodge")+
+  scale_y_continuous(labels=function(x)format(x, scientific=FALSE))+
+  labs(title = "Average Rides by User Type")+
+  ylab("Number of Rides")+
+  xlab("Day of Week")+
+  labs(fill="User Type")
+#rides by Weekday
+```
+
+Rides by Month
+```{r}
+bike_rides %>% 
+  group_by(member_casual,month) %>% 
+  summarise(number_of_rides=n()) %>% 
+  arrange(member_casual,month) %>% 
+  ggplot(aes(x=month,y=number_of_rides,
+             fill=member_casual))+
+  geom_col(position = "dodge")+
+  scale_y_continuous(labels=function(x)format
+                     (x,scientific=FALSE))+
+  labs(title="Total Month Rides by User Type")+
+  ylab("Average Number of Rides")+
+  xlab("Month")+
+  labs(fill="User Type")
+  
+
+```
+Bike Type Preference 
+```{r}
+bike_rides %>%
+  group_by(member_casual,month,rideable_type) %>% 
+  ggplot(aes(x=month, y=rideable_type,
+             fill=member_casual))
+
+
+
+```
+
+
